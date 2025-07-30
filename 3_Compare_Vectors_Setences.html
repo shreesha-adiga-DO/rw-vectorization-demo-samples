@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentence Similarity</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      width: 90%;
+      max-width: 600px;
+    }
+    input[type="text"], button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+    }
+    input[type="text"] {
+      background: #222;
+      color: #f0f0f0;
+    }
+    button {
+      background: #0078d7;
+      color: #fff;
+      cursor: pointer;
+    }
+    .output {
+      margin-top: 20px;
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Sentence Similarity</h2>
+    <input type="text" id="sentence1" placeholder="Enter first sentence..." />
+    <input type="text" id="sentence2" placeholder="Enter second sentence..." />
+    <button id="compareBtn">Compare Similarity</button>
+    <div class="output" id="outputBox">Loading model...</div>
+  </div>
+
+  <!-- Load transformers.js -->
+  <script type="module">
+    import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js";
+
+    let embedder;
+
+    // Cosine similarity function
+    function cosineSimilarity(vecA, vecB) {
+      const dot = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+      const magA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+      const magB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+      return dot / (magA * magB);
+    }
+
+    // Load the embeddings model
+    (async () => {
+      embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+      document.getElementById("outputBox").innerText = "Model loaded! Enter sentences and click Compare.";
+    })();
+
+    // Compare similarity
+    document.getElementById("compareBtn").addEventListener("click", async () => {
+      const sentence1 = document.getElementById("sentence1").value.trim();
+      const sentence2 = document.getElementById("sentence2").value.trim();
+      const outputBox = document.getElementById("outputBox");
+
+      if (!sentence1 || !sentence2) {
+        outputBox.innerText = "Please enter both sentences.";
+        return;
+      }
+
+      outputBox.innerText = "Generating embeddings and calculating similarity...";
+
+      // Get embeddings for both sentences
+      const emb1 = await embedder(sentence1, { pooling: "mean", normalize: true });
+      const emb2 = await embedder(sentence2, { pooling: "mean", normalize: true });
+
+      const vec1 = Array.from(emb1.data);
+      const vec2 = Array.from(emb2.data);
+
+      // Calculate cosine similarity
+      const similarity = cosineSimilarity(vec1, vec2);
+
+      outputBox.innerText = `Cosine Similarity: ${similarity.toFixed(4)}`;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text to Vector with transformers.js</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #121212;
+        color: #f0f0f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+      }
+      .container {
+        width: 90%;
+        max-width: 600px;
+      }
+      input[type="text"],
+      button {
+        width: 100%;
+        padding: 10px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 5px;
+      }
+      input[type="text"] {
+        background: #222;
+        color: #f0f0f0;
+      }
+      button {
+        background: #0078d7;
+        color: #fff;
+        cursor: pointer;
+      }
+      .output {
+        margin-top: 20px;
+        background: #1e1e1e;
+        padding: 10px;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Text to Vector</h2>
+      <input type="text" id="textInput" placeholder="Enter your text..." />
+      <button id="generateBtn">Generate Vector</button>
+      <div class="output" id="outputBox">Loading model...</div>
+    </div>
+
+    <!-- Load transformers.js -->
+    <script type="module">
+      import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js";
+
+      let embedder;
+
+      // Load the embeddings model
+      (async () => {
+        embedder = await pipeline(
+          "feature-extraction",
+          "Xenova/all-MiniLM-L6-v2"
+        );
+        document.getElementById("outputBox").innerText =
+          "Model loaded! Enter text and click Generate Vector.";
+      })();
+
+      // Handle button click
+      document.getElementById("generateBtn").addEventListener("click", async () => {
+          const text = document.getElementById("textInput").value.trim();
+          const outputBox = document.getElementById("outputBox");
+
+          if (!text) {
+            outputBox.innerText = "Please enter some text.";
+            return;
+          }
+
+          outputBox.innerText = "Generating vector...";
+          const result = await embedder(text, {
+            pooling: "mean",
+            normalize: true,
+          });
+
+          var vectorArray = Array.from(result.data);
+
+          // Convert vector to string for display
+          outputBox.innerText = `
+Vector Length:
+${result.data.length}
+            
+ Vector:
+${JSON.stringify(vectorArray.slice(0, 50))}...`;
+        });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fruits vs Vegetables Map</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    canvas {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .legend {
+      display: flex;
+      justify-content: center;
+      margin-top: 10px;
+      gap: 20px;
+    }
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <h2>2D Categorization: Fruits vs Vegetables</h2>
+  <p>X-axis: Vegetables | Y-axis: Fruits</p>
+  <canvas id="categoryCanvas" width="500" height="500"></canvas>
+  <div class="legend">
+    <span><div class="legend-box" style="background:#00ff00;"></div>Fruits</span>
+    <span><div class="legend-box" style="background:#ff0000;"></div>Vegetables</span>
+    <span><div class="legend-box" style="background:#ffaa00;"></div>Both (Overlap)</span>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("categoryCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Data points with fruit (y) and vegetable (x) "scores"
+    const dataPoints = [
+      { label: "Apple", x: 60, y: 400, color: "#00ff00" },
+      { label: "Banana", x: 80, y: 420, color: "#00ff00" },
+      { label: "Orange", x: 100, y: 380, color: "#00ff00" },
+      { label: "Strawberry", x: 70, y: 440, color: "#00ff00" },
+
+      { label: "Carrot", x: 400, y: 100, color: "#ff0000" },
+      { label: "Potato", x: 420, y: 80, color: "#ff0000" },
+      { label: "Spinach", x: 380, y: 120, color: "#ff0000" },
+      { label: "Broccoli", x: 360, y: 140, color: "#ff0000" },
+
+      // Overlapping items (both fruit and vegetable traits)
+      { label: "Tomato", x: 300, y: 300, color: "#0000ff" },
+      { label: "Lemon", x: 230, y: 270, color: "#ffaa00" }
+    ];
+
+    function drawAxes() {
+      ctx.strokeStyle = "#888";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      // Horizontal axis (Vegetables)
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      // Vertical axis (Fruits)
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+
+      ctx.fillStyle = "#aaa";
+      ctx.font = "14px Arial";
+      ctx.fillText("Vegetables →", canvas.width - 100, canvas.height / 2 - 10);
+      ctx.fillText("Fruits ↑", canvas.width / 2 + 10, 20);
+    }
+
+    function drawPoints() {
+      dataPoints.forEach(p => {
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, canvas.height - p.y, 6, 0, 2 * Math.PI); // invert Y for top origin
+        ctx.fill();
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "12px Arial";
+        ctx.fillText(p.label, p.x + 10, canvas.height - p.y + 4);
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawAxes();
+      drawPoints();
+    }
+
+    draw();
+  </script>
+</body>
+</html>

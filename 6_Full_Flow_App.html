@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Text Vectorizer and Search</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 {
+      margin-top: 20px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+    section {
+      margin-top: 20px;
+      padding: 10px;
+      background: #1e1e1e;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #333;
+      text-align: left;
+    }
+    button {
+      padding: 6px 12px;
+      border: none;
+      background: #3a82f6;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #666;
+      cursor: not-allowed;
+    }
+    textarea, input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 10px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #2b2b2b;
+      color: #f0f0f0;
+    }
+    .loading {
+      color: #ffcc00;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Text File Vectorizer & Similarity Search</h1>
+
+  <!-- DRL Section -->
+  <section id="drlSection">
+    <h2>DRL: Upload Text Files</h2>
+    <input type="file" id="fileInput" accept=".txt" multiple />
+    <div class="file-list">
+      <table id="fileTable">
+        <thead>
+          <tr><th>File Name</th><th>Text (Preview)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Vector Section -->
+  <section id="vectorSection">
+    <h2>Vectorization</h2>
+    <button id="vectorizeBtn" disabled>Vectorize Files</button>
+    <p id="vectorStatus"></p>
+    <div class="file-list">
+      <table id="vectorTable">
+        <thead>
+          <tr><th>File Name</th><th>Text Chunk</th><th>Vector (Preview)</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- RW Section -->
+  <section id="rwSection">
+    <h2>RW: Search Similar Chunks</h2>
+    <textarea id="queryInput" rows="3" placeholder="Enter test description here..."></textarea>
+    <button id="searchBtn" disabled>Find Similar Chunks</button>
+    <p id="searchStatus"></p>
+    <div class="file-list">
+      <table id="searchResults">
+        <thead>
+          <tr><th>File Name</th><th>Chunk</th><th>Similarity</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <script type="module">
+    // Load transformers.js from CDN
+    import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.9.0";
+
+    const fileInput = document.getElementById('fileInput');
+    const fileTableBody = document.querySelector('#fileTable tbody');
+    const vectorTableBody = document.querySelector('#vectorTable tbody');
+    const vectorizeBtn = document.getElementById('vectorizeBtn');
+    const vectorStatus = document.getElementById('vectorStatus');
+
+    const queryInput = document.getElementById('queryInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const searchStatus = document.getElementById('searchStatus');
+    const searchResultsBody = document.querySelector('#searchResults tbody');
+
+    let filesData = []; // { name, text }
+    let chunkEmbeddings = []; // { fileName, chunk, embedding }
+
+    // DRL: File Upload Handling
+    fileInput.addEventListener('change', async (e) => {
+      filesData = [];
+      chunkEmbeddings = [];
+      fileTableBody.innerHTML = '';
+      vectorTableBody.innerHTML = '';
+      searchResultsBody.innerHTML = '';
+      vectorizeBtn.disabled = true;
+      searchBtn.disabled = true;
+
+      const files = e.target.files;
+      for (let file of files) {
+        const text = await file.text();
+        filesData.push({ name: file.name, text });
+        const preview = text.length > 100 ? text.substring(0, 100) + '...' : text;
+        fileTableBody.innerHTML += `<tr><td>${file.name}</td><td>${preview}</td></tr>`;
+      }
+
+      if (filesData.length > 0) {
+        vectorizeBtn.disabled = false;
+      }
+    });
+
+    // Vectorization
+    let embedder;
+    vectorizeBtn.addEventListener('click', async () => {
+      vectorStatus.textContent = "Loading model... Please wait.";
+      vectorizeBtn.disabled = true;
+      vectorTableBody.innerHTML = '';
+
+      if (!embedder) {
+        embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+      }
+      vectorStatus.textContent = "Model loaded. Vectorizing files...";
+
+      for (let file of filesData) {
+        const chunks = splitIntoChunks(file.text, 200); // split text into chunks
+        for (let chunk of chunks) {
+          const embedding = await embedder(chunk, { pooling: 'mean', normalize: true });
+          const vector = Array.from(embedding.data);
+          chunkEmbeddings.push({ fileName: file.name, chunk, embedding: vector });
+
+          const previewChunk = chunk.length > 80 ? chunk.substring(0, 80) + '...' : chunk;
+          vectorTableBody.innerHTML += `
+            <tr>
+              <td>${file.name}</td>
+              <td>${previewChunk}</td>
+              <td>[${vector.slice(0, 5).map(v => v.toFixed(8)).join(', ')} ...]</td>
+            </tr>
+          `;
+        }
+      }
+
+      vectorStatus.textContent = "Vectorization completed.";
+      if (chunkEmbeddings.length > 0) searchBtn.disabled = false;
+    });
+
+    // RW: Search for Similar Chunks
+    searchBtn.addEventListener('click', async () => {
+      const query = queryInput.value.trim();
+      if (!query) return alert("Please enter a test description.");
+
+      searchStatus.textContent = "Vectorizing query...";
+      searchResultsBody.innerHTML = '';
+
+      const queryEmbedding = await embedder(query, { pooling: 'mean', normalize: true });
+      const queryVector = Array.from(queryEmbedding.data);
+
+      const matches = [];
+      for (let entry of chunkEmbeddings) {
+        const sim = cosineSimilarity(queryVector, entry.embedding);
+        if (sim >= 0.3) {
+          matches.push({
+            fileName: entry.fileName,
+            chunk: entry.chunk,
+            similarity: sim
+          });
+        }
+      }
+
+      matches.sort((a, b) => b.similarity - a.similarity);
+
+      if (matches.length === 0) {
+        searchStatus.textContent = "No matches found (similarity > 0.5).";
+        return;
+      }
+
+      matches.forEach(m => {
+        const previewChunk = m.chunk.length > 80 ? m.chunk.substring(0, 80) + '...' : m.chunk;
+        searchResultsBody.innerHTML += `
+          <tr>
+            <td>${m.fileName}</td>
+            <td>${previewChunk}</td>
+            <td>${m.similarity.toFixed(3)}</td>
+          </tr>
+        `;
+      });
+
+      searchStatus.textContent = "Found " + matches.length + " matching chunks.";
+    });
+
+    // Helpers
+    function splitIntoChunks(text, size) {
+    //   const chunks = [];
+    //   for (let i = 0; i < text.length; i += size) {
+    //     chunks.push(text.substring(i, i + size));
+    //   }
+    //   return chunks;
+
+        return text.split("\n").filter(a => a.trim());
+    }
+
+    function cosineSimilarity(vecA, vecB) {
+      const dot = vecA.reduce((acc, v, i) => acc + v * vecB[i], 0);
+      const normA = Math.sqrt(vecA.reduce((acc, v) => acc + v * v, 0));
+      const normB = Math.sqrt(vecB.reduce((acc, v) => acc + v * v, 0));
+      return dot / (normA * normB);
+    }
+  </script>
+</body>
+</html>

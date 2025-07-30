@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cosine Similarity Visualizer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    canvas {
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 8px;
+    }
+    .controls {
+      margin-top: 20px;
+      width: 80%;
+      max-width: 400px;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    .cosine-value {
+      margin-top: 10px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h2>Cosine Similarity Visualizer</h2>
+  <canvas id="vectorCanvas" width="400" height="400"></canvas>
+  <div class="controls">
+    <label for="angleSlider">Rotate Vector B:</label>
+    <input type="range" id="angleSlider" min="0" max="180" value="45" />
+    <div class="cosine-value" id="cosineValue">Cosine Similarity: ...</div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("vectorCanvas");
+    const ctx = canvas.getContext("2d");
+    const angleSlider = document.getElementById("angleSlider");
+    const cosineValue = document.getElementById("cosineValue");
+
+    // Vector A is fixed
+    const vectorA = { x: 100, y: 0 };
+
+    // Convert degrees to radians
+    function degToRad(deg) {
+      return (deg * Math.PI) / 180;
+    }
+
+    // Draw the canvas with vectors
+    function draw(angleDeg) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+
+      // Draw axes
+      ctx.strokeStyle = "#555";
+      ctx.beginPath();
+      ctx.moveTo(-200, 0);
+      ctx.lineTo(200, 0);
+      ctx.moveTo(0, -200);
+      ctx.lineTo(0, 200);
+      ctx.stroke();
+
+      // Draw Vector A (fixed)
+      ctx.strokeStyle = "#00ff00";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(vectorA.x, vectorA.y);
+      ctx.stroke();
+      ctx.fillStyle = "#00ff00";
+      ctx.fillText("A", vectorA.x + 5, vectorA.y - 5);
+
+      // Draw Vector B (rotated)
+      const rad = degToRad(angleDeg);
+      const vectorB = {
+        x: 100 * Math.cos(rad),
+        y: 100 * Math.sin(rad),
+      };
+      ctx.strokeStyle = "#ff0000";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(vectorB.x, vectorB.y);
+      ctx.stroke();
+      ctx.fillStyle = "#ff0000";
+      ctx.fillText("B", vectorB.x + 5, vectorB.y - 5);
+
+      ctx.restore();
+
+      // Calculate cosine similarity
+      const dot = vectorA.x * vectorB.x + vectorA.y * vectorB.y;
+      const magA = Math.sqrt(vectorA.x ** 2 + vectorA.y ** 2);
+      const magB = Math.sqrt(vectorB.x ** 2 + vectorB.y ** 2);
+      const cosineSim = dot / (magA * magB);
+
+      cosineValue.innerText = `Angle: ${angleDeg}° | Cosine Similarity: ${cosineSim.toFixed(3)}`;
+    }
+
+    // Initial draw
+    draw(angleSlider.value);
+
+    // Update on slider change
+    angleSlider.addEventListener("input", () => {
+      draw(angleSlider.value);
+    });
+  </script>
+</body>
+</html>

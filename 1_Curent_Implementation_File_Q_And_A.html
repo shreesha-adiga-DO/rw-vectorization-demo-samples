@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Q&A with transformers.js</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      width: 90%;
+      max-width: 600px;
+    }
+    input[type="file"], input[type="text"], button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+    }
+    input[type="file"] {
+      background: #1e1e1e;
+      color: #ccc;
+    }
+    input[type="text"] {
+      background: #222;
+      color: #f0f0f0;
+    }
+    button {
+      background: #0078d7;
+      color: #fff;
+      cursor: pointer;
+    }
+    .answer {
+      margin-top: 20px;
+      background: #1e1e1e;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Q&A on Uploaded File</h2>
+    <input type="file" id="fileInput" accept=".txt" />
+    <input type="text" id="questionInput" placeholder="Ask a question..." />
+    <button id="askBtn">Ask</button>
+    <div class="answer" id="answerBox">Upload a file and ask a question.</div>
+  </div>
+
+  <!-- Load transformers.js -->
+  <script type="module">
+    import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers/dist/transformers.min.js";
+
+    let fileContent = "";
+    let qaPipeline;
+
+    // Load the Question-Answering pipeline
+    (async () => {
+      qaPipeline = await pipeline("question-answering", "Xenova/distilbert-base-cased-distilled-squad");
+      document.getElementById("answerBox").innerText = "Model loaded! Upload a file and ask a question.";
+    })();
+
+    // Handle file upload
+    document.getElementById("fileInput").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          fileContent = e.target.result;
+          document.getElementById("answerBox").innerText = "File uploaded. Ask your question.";
+        };
+        reader.readAsText(file);
+      }
+    });
+
+    // Handle question asking
+    document.getElementById("askBtn").addEventListener("click", async () => {
+      const question = document.getElementById("questionInput").value.trim();
+      const answerBox = document.getElementById("answerBox");
+
+      if (!fileContent) {
+        answerBox.innerText = "Please upload a text file first.";
+        return;
+      }
+      if (!question) {
+        answerBox.innerText = "Please enter a question.";
+        return;
+      }
+
+      answerBox.innerText = "Thinking...";
+      const result = await qaPipeline(
+        question,
+        fileContent
+      );
+
+      answerBox.innerText = `Answer: ${result.answer} (score: ${result.score.toFixed(2)})`;
+    });
+  </script>
+</body>
+</html>
